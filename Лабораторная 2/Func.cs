@@ -7,14 +7,16 @@ using Emgu.CV;
 using Emgu.CV.CvEnum;
 using Emgu.CV.Structure;
 using Emgu.CV.Util;
+using System.Drawing;
 
 namespace Лабораторная_2
 {
     class Func
     {
         public Image<Bgr, byte> sourceImage; //глобальная переменная
-        public Image<Bgr, byte> secondImage;
-        public Image<Bgr, byte> timeImage;
+
+        PointF[] point = new PointF[4];
+        int c = 0;
 
         public void Source(string fileName)
         {
@@ -22,337 +24,196 @@ namespace Лабораторная_2
 
         }
 
-        public Image<Bgr, byte> Blue()
+        public Image<Bgr, byte> Scale(double sX, double sY)
         {
-            var channel = sourceImage.Split()[2];
-
-            Image<Bgr, byte> destImage = sourceImage.CopyBlank();
-
-            VectorOfMat vm = new VectorOfMat();
-
-            vm.Push(channel.CopyBlank());
-            vm.Push(channel.CopyBlank());
-            vm.Push(channel);
-
-            CvInvoke.Merge(vm, destImage);
-            return destImage;
-        }
-
-        public Image<Bgr, byte> Green()
-        {
-            var channel = sourceImage.Split()[1];
-
-            Image<Bgr, byte> destImage = sourceImage.CopyBlank();
-
-            VectorOfMat vm = new VectorOfMat();
-
-            vm.Push(channel.CopyBlank());
-            vm.Push(channel);
-            vm.Push(channel.CopyBlank());
-
-            CvInvoke.Merge(vm, destImage);
-            return destImage;
-        }
-
-        public Image<Bgr, byte> Red()
-        {
-            var channel = sourceImage.Split()[0];
-
-            Image<Bgr, byte> destImage = sourceImage.CopyBlank();
-
-            VectorOfMat vm = new VectorOfMat();
-
-            vm.Push(channel);
-            vm.Push(channel.CopyBlank());
-            vm.Push(channel.CopyBlank());
-
-            CvInvoke.Merge(vm, destImage);
-            return destImage;
-        }
-
-        public Image<Gray, byte> Mono()
-        {
-            var grayImage = new Image<Gray, byte>(sourceImage.Size);
-
-            for (int y = 0; y < grayImage.Height; y++)
+            var resultImage = new Image<Bgr, byte>((int)(sourceImage.Width * sX), (int)(sourceImage.Height * sY));
+            for (int x = 0; x < resultImage.Width - 1; x++)
             {
-                for (int x = 0; x < grayImage.Width; x++)
+                for (int y = 0; y < resultImage.Height - 1; y++)
                 {
-                    grayImage.Data[y, x, 0] = Convert.ToByte(0.299 * sourceImage.Data[y, x, 2] + 0.587 * sourceImage.Data[y, x, 1] + 0.114 * sourceImage.Data[y, x, 0]);
+                    double X = x / sX;
+                    double Y = y / sY;
+                    double baseX = Math.Floor(X);
+                    double baseY = Math.Floor(Y);
+
+                    if (baseX >= sourceImage.Width - 1 || baseY >= sourceImage.Height - 1) continue;
+
+                    double rX = X - baseX;
+                    double rY = Y - baseY;
+                    double irX = 1 - rX;
+                    double irY = 1 - rY;
+
+                    Bgr c = new Bgr();
+                    Bgr c1 = new Bgr();
+                    Bgr c2 = new Bgr();
+
+                    c1.Blue = sourceImage.Data[(int)baseY, (int)baseX, 0] * irX + sourceImage.Data[(int)baseY, (int)baseX + 1, 0] * rX;
+                    c1.Green = sourceImage.Data[(int)baseY, (int)baseX, 1] * irX + sourceImage.Data[(int)baseY, (int)baseX + 1, 1] * rX;
+                    c1.Red = sourceImage.Data[(int)baseY, (int)baseX, 2] * irX + sourceImage.Data[(int)baseY, (int)baseX + 1, 2] * rX;
+
+                    c2.Blue = sourceImage.Data[(int)baseY + 1, (int)baseX, 0] * irX + sourceImage.Data[(int)baseY + 1, (int)baseX + 1, 0] * rX;
+                    c2.Green = sourceImage.Data[(int)baseY + 1, (int)baseX, 0] * irX + sourceImage.Data[(int)baseY + 1, (int)baseX + 1, 0] * rX;
+                    c2.Red = sourceImage.Data[(int)baseY + 1, (int)baseX, 0] * irX + sourceImage.Data[(int)baseY + 1, (int)baseX + 1, 0] * rX;
+
+                    c.Blue = c1.Blue * irY + c2.Blue * rY;
+                    c.Green = c1.Green * irY + c2.Green * rY;
+                    c.Red = c1.Red * irY + c2.Red * rY;
+
+                    resultImage[y, x] = c;
+
                 }
             }
-            return grayImage;
+
+            return resultImage;
         }
 
-        private int chek(int chan)
+        public Image<Bgr, byte> Shearing(double sX, double sY)
         {
-            if (chan > 255) { chan = 255; }
-            else if (chan < 0) { chan = 0; }
-            return chan;
-        }
+            var resultImage = sourceImage.CopyBlank();
 
-        private double chek(double chan)
-        {
-            if (chan > 255) { chan = 255; }
-            else if (chan < 0) { chan = 0; }
-            return chan;
-        }
-
-        public Image<Bgr, byte> Sepia()
-        {
-            var sepImage = new Image<Bgr, byte>(sourceImage.Size);
-
-            for (int y = 0; y < sepImage.Height; y++)
+            for (int x = 0; x < resultImage.Width - 1; x++)
             {
-                for (int x = 0; x < sepImage.Width; x++)
+                for (int y = 0; y < resultImage.Height - 1; y++)
                 {
-                    sepImage.Data[y, x, 0] = Convert.ToByte(chek(0.272 * sourceImage.Data[y, x, 2] + 0.534 * sourceImage.Data[y, x, 1] + 0.131 * sourceImage.Data[y, x, 0]));
-                    sepImage.Data[y, x, 1] = Convert.ToByte(chek(0.349 * sourceImage.Data[y, x, 2] + 0.686 * sourceImage.Data[y, x, 1] + 0.168 * sourceImage.Data[y, x, 0]));
-                    sepImage.Data[y, x, 2] = Convert.ToByte(chek(0.393 * sourceImage.Data[y, x, 2] + 0.769 * sourceImage.Data[y, x, 1] + 0.189 * sourceImage.Data[y, x, 0]));
-                }
-            }
-            return sepImage;
-        }
 
-        public Image<Bgr, byte> Bridght(int Bridghtness, double Contr)
-        {
-            Image<Bgr, byte> result = sourceImage.Convert<Bgr, byte>();
-            
-            for (int chanel = 0; chanel < 3; chanel++)
-            {
-                for (int y = 0; y < result.Height; y++)
-                {
-                    for (int x = 0; x < result.Width; x++)
+                    int newX = x + Convert.ToInt32(sX * (sourceImage.Height - y));
+                    int newY = y + Convert.ToInt32(sY * x);
+
+                    if (newX < resultImage.Width && newY < resultImage.Height && newX >= 0 && newY >= 0)
                     {
-                        result.Data[y, x, chanel] = Convert.ToByte(chek(sourceImage.Data[y, x, chanel] * (Contr / 10) + Bridghtness));
+                        resultImage[newY, newX] = sourceImage[y, x];
                     }
                 }
             }
-            return result;
+            return resultImage;
         }
 
-        public void secondImg(string fileName)
+        public Image<Bgr, byte> Rotation(double angle, double centerX, double centerY)
         {
-            secondImage = new Image<Bgr, byte>(fileName).Resize(640, 480, Inter.Linear);
-        }
+            angle = (Math.PI / 180) * angle;
+            var resultImage = sourceImage.CopyBlank();
 
-        public Image<Bgr, byte> Colapse(double a, Image<Bgr, byte> fil = null)
-        {
-            var image = (fil != null) ? fil : sourceImage;
-            a = a / 10;
-            Image<Bgr, byte> result = image.CopyBlank();
-
-            for (int chanel = 0; chanel < 3; chanel++)
+            for (int x = 0; x < resultImage.Width - 1; x++)
             {
-                for (int y = 0; y < result.Height; y++)
+                for (int y = 0; y < resultImage.Height - 1; y++)
                 {
-                    for (int x = 0; x < result.Width; x++)
+                    double newX = Convert.ToInt32(Math.Cos(angle) * (x - centerX) - Math.Sin(angle) * (y - centerY)) + centerX;
+                    double newY = Convert.ToInt32(Math.Sin(angle) * (x - centerX) + Math.Cos(angle) * (y - centerY)) + centerY;
+
+                    if (newX < resultImage.Width && newY < resultImage.Height && newX >= 0 && newY >= 0)
                     {
-                        result.Data[y, x, chanel] = Convert.ToByte(chek(image.Data[y, x, chanel] * a + secondImage.Data[y, x, chanel] * (1 - a)));
-                    }
-                }
-            }
-            return result;
-        }
-        public Image<Bgr, byte> AntiColapse(double a)
-        {
-            a = a / 10;
-            Image<Bgr, byte> result = sourceImage.CopyBlank();
+                        double X = newX;
+                        double Y = newY;
+                        double baseX = Math.Floor(X);
+                        double baseY = Math.Floor(Y);
 
-            for (int chanel = 0; chanel < 3; chanel++)
-            {
-                for (int y = 0; y < result.Height; y++)
-                {
-                    for (int x = 0; x < result.Width; x++)
-                    {
-                        result.Data[y, x, chanel] = Convert.ToByte(chek(sourceImage.Data[y, x, chanel] * a - secondImage.Data[y, x, chanel] * (1 - a)));
-                    }
-                }
-            }
-            return result;
-        }
+                        if (baseX >= sourceImage.Width - 1 || baseY >= sourceImage.Height - 1) continue;
 
-        public Image<Bgr, byte> What<T>(int a, Image<T, byte> fil = null) where T : struct, IColor
-        {
-            Image<Bgr, byte> result = sourceImage.CopyBlank();
+                        double rX = X - baseX;
+                        double rY = Y - baseY;
+                        double irX = 1 - rX;
+                        double irY = 1 - rY;
 
-            for (int chanel = 0; chanel < sourceImage.NumberOfChannels; chanel++)
-            {
-                int fil_channel = (chanel < fil.NumberOfChannels) ? chanel : fil.NumberOfChannels - 1;
 
-                for (int y = 0; y < result.Height; y++)
-                {
-                    for (int x = 0; x < result.Width; x++)
-                    {
-                        result.Data[y, x, chanel] = Convert.ToByte(chek(sourceImage.Data[y, x, chanel] & fil.Data[y, x, fil_channel]));
-                    }
-                }
-            }
-            return result;
-        }
-
-        public Image<Bgr, byte> What(int a)
-        {
-            return What(a, secondImage);
-        }
-
-        public Image<Bgr, byte> Sharp()
-        {
-            
-            int[,] w = new int[3, 3]
-            {
-                {-1,-1,-1},
-                {-1, 9,-1},
-                {-1,-1,-1}
-            };
-            Image<Bgr, byte> result3 = windowfilter(w);
-
-            return result3;
-        }
-
-        public Image<Bgr, byte> Embos()
-        {
-            int[,] w = new int[3, 3]
-            {
-                {-4,-2, 0},
-                {-2, 1, 2},
-                { 0, 2, 4}
-            };
-            Image<Bgr, byte> result3 = windowfilter(w);
-
-            return result3;
-        }
-
-        public Image<Bgr, byte> Grani()
-        {
-            int[,] w = new int[3, 3]
-            {
-                { 0,-2, 0},
-                {-2, 4, 0},
-                { 0, 0, 0}
-            };
-
-            Image<Bgr, byte> result3 = windowfilter(w);
-            
-            return result3;
-        }
-
-        public Image<Bgr, byte> Filter(int f1, int f2, int f3, int f4, int f5, int f6, int f7, int f8, int f9)
-        {
-            int[,] w = new int[3, 3]
-            {
-                {f1,f2,f3},
-                {f4,f5,f6},
-                {f7,f8,f9}
-            };
-
-            Image<Bgr, byte> result3 = windowfilter(w);
-
-            return result3;
-        }
-
-        public Image<Bgr, byte> windowfilter(int [,]w)
-        {
-            Image<Bgr, byte> result = sourceImage.Convert<Bgr, byte>();
-            Image<Bgr, byte> result2 = result.CopyBlank();
-
-            for (int chanel = 0; chanel < 3; chanel++)
-            {
-                for (int y = 1; y < result.Height - 1; y++)
-                {
-                    for (int x = 1; x < result.Width - 1; x++)
-                    {
-                        int a = 0;
-                        for (int i = -1; i < 2; i++)
+                        Bgr c1 = new Bgr
                         {
-                            for (int j = -1; j < 2; j++)
-                            {
-                                a += result.Data[i + y, i + x, chanel] * w[i + 1, j + 1];
-                            }
-                        }
-                        result2.Data[y, x, chanel] = Convert.ToByte(chek(a));
-                    }
-                }
-            }
-            return result2;
-        }
+                            Blue = sourceImage.Data[(int)baseY, (int)baseX, 0] * irX + sourceImage.Data[(int)baseY, (int)baseX + 1, 0] * rX,
+                            Green = sourceImage.Data[(int)baseY, (int)baseX, 1] * irX + sourceImage.Data[(int)baseY, (int)baseX + 1, 1] * rX,
+                            Red = sourceImage.Data[(int)baseY, (int)baseX, 2] * irX + sourceImage.Data[(int)baseY, (int)baseX + 1, 2] * rX
+                        };
 
-        public Image<Hsv, byte> HSV(int H)
-        {
-            Image<Hsv, byte> hsvImage = sourceImage.Convert<Hsv, byte>();
-
-            for (int y = 0; y < hsvImage.Height; y++)
-            {
-                for (int x = 0; x < hsvImage.Width; x++)
-                {
-                    
-                    hsvImage.Data[y, x, 0] = Convert.ToByte(chek(H));
-                    //hsvImage.Data[y, x, 1] = Convert.ToByte(chek(S));
-                    //hsvImage.Data[y, x, 2] = Convert.ToByte(chek(V));
-                        
-                   
-                }
-            }
-
-            return hsvImage;
-        }
-
-        public Image<T, byte> Blur<T>(Image<T, byte> fil = null) where T : struct, IColor
-        {
-            Image<T, byte> result = fil.CopyBlank();
-
-            List<byte> window = new List<byte>();
-            int k = 7;
-
-            for (int chanel = 0; chanel < fil.NumberOfChannels; chanel++)
-            {
-                for (int y = k/2; y < fil.Height - k/2; y++)
-                {
-                    for (int x = k/2; x < fil.Width - k/2; x++)
-                    {
-                        window.Clear();
-                        for (int i = -k / 2; i <= k / 2; i++)
+                        Bgr c2 = new Bgr
                         {
-                            for (int j = -k / 2; j <= k / 2; j++)
-                            {
-                                window.Add(fil.Data[i + y, j + x, chanel]);
-                            }
-                        }
-                        window.Sort();
+                            Blue = sourceImage.Data[(int)baseY + 1, (int)baseX, 0] * irX + sourceImage.Data[(int)baseY + 1, (int)baseX + 1, 0] * rX,
+                            Green = sourceImage.Data[(int)baseY + 1, (int)baseX, 0] * irX + sourceImage.Data[(int)baseY + 1, (int)baseX + 1, 0] * rX,
+                            Red = sourceImage.Data[(int)baseY + 1, (int)baseX, 0] * irX + sourceImage.Data[(int)baseY + 1, (int)baseX + 1, 0] * rX
+                        };
 
-                        result.Data[y, x, chanel] = window[window.Count / 2];
+                        Bgr c = new Bgr
+                        {
+                            Blue = c1.Blue * irY + c2.Blue * rY,
+                            Green = c1.Green * irY + c2.Green * rY,
+                            Red = c1.Red * irY + c2.Red * rY
+                        };
+
+                        resultImage[y, x] = c;
                     }
                 }
             }
-            return result;
+
+            return resultImage;
         }
 
-        public Image<Bgr, byte> Blur()
+        public Image<Bgr, byte> Reflection(int qX, int qY)
         {
-            return Blur(sourceImage);
+            var resultImage = sourceImage.CopyBlank();
+            int newX, newY;
+
+            for (int x = 0; x < resultImage.Width - 1; x++)
+            {
+                for (int y = 0; y < resultImage.Height - 1; y++)
+                {
+
+                    if (qX == -1)
+                    {
+                        newX = x * qX + sourceImage.Width - 1;
+                    }
+                        else
+                        {
+                            newX = x;
+                        }
+
+                    if (qY == -1)
+                    {
+                        newY = y * qY + sourceImage.Height - 1;
+                    }
+                        else
+                        {
+                            newY = y;
+                        }
+
+                    resultImage[newY, newX] = sourceImage[y, x];
+                }
+            }
+
+            return resultImage;
         }
 
-        public Image<Bgr, byte> Aqwa(int Bridghtness, double Contr, int a)
+        public Image<Bgr, byte> Bill(int x, int y)
         {
-            Image<Bgr, byte> result = Bridght(Bridghtness, Contr);
-            result = Blur(result);
-            result = Colapse(a, result);
+            var imgCopy = sourceImage.Copy();
 
-            return result;
+            point[c] = new Point(x, y);
+            c++;
+            if (c >= 4) c = 0;
+
+            int radius = 2;
+            int thickness = 2;
+            var color = new Bgr(Color.Red).MCvScalar;
+
+            for (int i = 0; i < 4; i++)
+                // функция, рисующая на изображении круг с заданными параметрами
+                CvInvoke.Circle(imgCopy, new Point((int)point[i].X, (int)point[i].Y), radius, color, thickness);
+
+            return imgCopy;
         }
 
-
-        public Image<Bgr, byte> cartoon(int a)
+        public Image<Bgr, byte> Homography()
         {
-            Image<Gray, byte> result = Mono();
-            result = Blur(result);
+            var resultImage = sourceImage.CopyBlank();
 
-            var edges = result.Convert<Gray, byte>();
-            edges = edges.ThresholdAdaptive(new Gray(230), AdaptiveThresholdType.MeanC, ThresholdType.Binary, 3, new Gray(0.03));
+            var destPoints = new PointF[]
+            {
+                 new PointF(sourceImage.Width - 1, 0),
+                 new PointF(0, 0),
+                 new PointF(0, sourceImage.Height - 1),
+                 new PointF(sourceImage.Width - 1, sourceImage.Height - 1)
+            };
+            var homographyMatrix = CvInvoke.GetPerspectiveTransform(point, destPoints);
 
-            var result2 = What(a, edges);
+            CvInvoke.WarpPerspective(sourceImage, resultImage, homographyMatrix, resultImage.Size);
 
-            return result2;
+            return resultImage;
         }
     }
 }
